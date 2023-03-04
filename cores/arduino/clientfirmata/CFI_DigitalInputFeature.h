@@ -18,6 +18,8 @@
 
 class CFI_ClientFirmata;
 
+typedef void (*voidFuncPtr)(void);
+
 class CFI_DigitalInputFeature : public CFI_ClientFirmataFeature
 {
   public:
@@ -30,10 +32,17 @@ class CFI_DigitalInputFeature : public CFI_ClientFirmataFeature
     boolean handleSysex(byte command, int argc, byte* argv);
     void updateFeature();
 
+    void attachInterrupt(uint8_t interruptNum, void(*userFunc)(void), int mode);
+    void detachInterrupt(uint8_t interruptNum);
+    void interrupts();
+    void noInterrupts();
+
   private:
     CFI_ClientFirmata *_firmata;
 	int _digitalPorts[16] = { 0 }; // all binary input ports
 	bool _reportPorts[16] = { false }; // 1 = report this port, 0 = silence
+
+    volatile bool interruptsEnabled = true;
 
     void reportDigitalPort(byte port);
 };

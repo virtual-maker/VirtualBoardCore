@@ -97,6 +97,12 @@ public:
     * @param value analog
     */
     void _analogWrite(uint8_t pin, uint16_t value);
+
+    void attachInterrupt(uint8_t interruptNum, void(*userFunc)(void), int mode);
+    void detachInterrupt(uint8_t interruptNum);
+    void interrupts();
+    void noInterrupts();
+
     /**
      * @brief Overloaded assign operator.
      *

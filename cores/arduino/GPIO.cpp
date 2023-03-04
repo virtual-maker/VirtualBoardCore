@@ -117,6 +117,34 @@ void GPIOClass::_analogWrite(uint8_t pin, uint16_t value)
 #endif
 }
 
+void GPIOClass::attachInterrupt(uint8_t interruptNum, void(*userFunc)(void), int mode)
+{
+#if defined(VB_FIRMATA_PORT)
+    _digitalInput->attachInterrupt(interruptNum, userFunc, mode);
+#endif
+}
+
+void GPIOClass::detachInterrupt(uint8_t interruptNum)
+{
+#if defined(VB_FIRMATA_PORT)
+    _digitalInput->detachInterrupt(interruptNum);
+#endif
+}
+
+void GPIOClass::interrupts()
+{
+#if defined(VB_FIRMATA_PORT)
+    _digitalInput->interrupts();
+#endif
+}
+
+void GPIOClass::noInterrupts()
+{
+#if defined(VB_FIRMATA_PORT)
+    _digitalInput->noInterrupts();
+#endif
+}
+
 GPIOClass& GPIOClass::operator=(const GPIOClass& other)
 {
   if (this != &other) {

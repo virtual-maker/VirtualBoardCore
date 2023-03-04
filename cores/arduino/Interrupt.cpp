@@ -27,22 +27,22 @@
 #include "interrupt.h"
 
 
-volatile bool interruptsEnabled = true;
-
 void attachInterrupt(uint8_t interruptNum, void(*userFunc)(void), int mode)
 {
+  GPIO.attachInterrupt(interruptNum, userFunc, mode);
 }
 
 void detachInterrupt(uint8_t interruptNum)
 {
+  GPIO.detachInterrupt(interruptNum);
 }
 
 void interrupts()
 {
-  interruptsEnabled = true;
+  GPIO.interrupts();
 }
 
 void noInterrupts()
 {
-  interruptsEnabled = false;
+  GPIO.noInterrupts();
 }

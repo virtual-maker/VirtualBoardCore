@@ -40,6 +40,7 @@
 #define PIN_SERIAL_RX 0
 #define PIN_SERIAL_TX 1
 
+#define EXTERNAL_NUM_INTERRUPTS (2)
 #define NUM_DIGITAL_PINS            20
 #define NUM_ANALOG_INPUTS           6
 #define analogInputToDigitalPin(p)  ((p < 6) ? (p) + 14 : -1)
@@ -163,8 +164,9 @@ static const uint8_t A11 = PIN_A11;	// D12
 #define PIN_SERIAL_RX 0
 #define PIN_SERIAL_TX 1
 
-#define NUM_DIGITAL_PINS            20
-#define NUM_ANALOG_INPUTS           6
+#define EXTERNAL_NUM_INTERRUPTS  (2)
+#define NUM_DIGITAL_PINS        (20)
+#define NUM_ANALOG_INPUTS        (6)
 #define analogInputToDigitalPin(p)  ((p < 6) ? (p) + 14 : -1)
 
 #define digitalPinHasPWM(p)         ((p) == 3 || (p) == 5 || (p) == 6 || (p) == 9 || (p) == 10)
