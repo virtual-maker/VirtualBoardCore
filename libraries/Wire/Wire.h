@@ -98,6 +98,11 @@ class TwoWire : public Stream
       return write((uint8_t)n);
     }
     using Print::write;
+
+private:
+#if defined(VB_FIRMATA_PORT)
+    CFI_I2CFeature* _i2c = NULL;
+#endif
 };
 
 extern TwoWire Wire;

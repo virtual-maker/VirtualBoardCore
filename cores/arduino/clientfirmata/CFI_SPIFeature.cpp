@@ -153,13 +153,13 @@ void CFI_SPIFeature::handleSpiReply(byte argc, byte* argv)
 
     // Check for cannel and device Id
 	if (argv[0] != _channelDeviceId) {
-        CFI_DEBUG_PRINT(F("SPI reply: Unknown channel/deviceId specified: "));
+        CFI_DEBUG_PRINT(F("SPI reply: Unknown channel/deviceId received: "));
         CFI_DEBUG_PRINTLN(argv[0]);
 		return;
 	}
     // Check for request Id
     if (argv[1] != _requestId) {
-        CFI_DEBUG_PRINT(F("SPI reply: Unknown channel/deviceId specified: "));
+        CFI_DEBUG_PRINT(F("SPI reply: Unknown requestId received: "));
         CFI_DEBUG_PRINTLN(argv[1]);
         return;
     }

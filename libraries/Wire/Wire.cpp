@@ -50,30 +50,34 @@ void (*TwoWire::user_onReceive)(int);
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-TwoWire::TwoWire()
-{
+TwoWire::TwoWire() {
+#if defined(VB_FIRMATA_PORT)
+  _i2c = new CFI_I2CFeature(GPIO.ClientFirmata);
+#endif
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void TwoWire::begin(void)
-{
+void TwoWire::begin(void) {
   rxBufferIndex = 0;
   rxBufferLength = 0;
 
   txBufferIndex = 0;
   txBufferLength = 0;
-
-#if defined(VM_DISABLE_TWI)
+#if defined(VB_FIRMATA_PORT)
+  _i2c->config(0);
+#elif defined(VM_DISABLE_TWI)
   logError("Can't open TWI device\n");
 #else
   twiWrapper.begin();
 #endif
 }
 
-void TwoWire::begin(uint8_t address)
-{
-#if !defined(VM_DISABLE_TWI)
+void TwoWire::begin(uint8_t address) {
+#if defined(VB_FIRMATA_PORT)
+  logError("TWI target mode not supported\n");
+  return;
+#elif !defined(VM_DISABLE_TWI)
   twiWrapper.setAddress(address);
   twiWrapper.attachSlaveTxEvent(onRequestService);
   twiWrapper.attachSlaveRxEvent(onReceiveService);
@@ -81,31 +85,43 @@ void TwoWire::begin(uint8_t address)
   begin();
 }
 
-void TwoWire::begin(int address)
-{
+void TwoWire::begin(int address) {
   begin((uint8_t)address);
 }
 
-void TwoWire::end(void)
-{
-#if defined(VM_DISABLE_TWI)
+void TwoWire::end(void) {
+#if defined(VB_FIRMATA_PORT)
+  logError("TWI end not supported\n");
+  return;
+#elif defined(VM_DISABLE_TWI)
   logError("Can't close TWI device\n");
 #else
   twiWrapper.end();
 #endif
 }
 
-void TwoWire::setClock(uint32_t clock)
-{
-#if !defined(VM_DISABLE_TWI)
+void TwoWire::setClock(uint32_t clock) {
+#if defined(VB_FIRMATA_PORT)
+  logError("TWI set clock not supported\n");
+  return;
+#elif !defined(VM_DISABLE_TWI)
   twiWrapper.setFrequency(clock);
 #endif
 }
 
 uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint32_t iaddress, uint8_t isize,
-                             uint8_t sendStop)
-{
-#if defined(VM_DISABLE_TWI)
+                             uint8_t sendStop) {
+  uint8_t read = 0;
+#if defined(VB_FIRMATA_PORT)
+  if (isize > 1) {
+    logError("TWI requestFrom isize of iaddress > 1 not supported\n");
+    return 0;
+  }
+  read = _i2c->request(txAddress,
+                               sendStop ? CFI_I2C_STOP_TX : CFI_I2C_RESTART_TX,
+                               CFI_I2C_READ, txBuffer, 0, rxBuffer, quantity,
+                               isize ? (uint8_t)iaddress : CFI_I2C_REGISTER_NOT_SPECIFIED);
+#elif defined(VM_DISABLE_TWI)
   return 0;
 #else
   if (isize > 0) {
@@ -132,37 +148,31 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint32_t iaddres
     quantity = BUFFER_LENGTH;
   }
   // perform blocking read into buffer
-  uint8_t read = twiWrapper.readFrom(address, rxBuffer, quantity, sendStop);
+  read = twiWrapper.readFrom(address, rxBuffer, quantity, sendStop);
+#endif
   // set rx buffer iterator vars
   rxBufferIndex = 0;
   rxBufferLength = read;
-
   return read;
-#endif
 }
 
-uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
-{
+uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop) {
   return requestFrom((uint8_t)address, (uint8_t)quantity, (uint32_t)0, (uint8_t)0, (uint8_t)sendStop);
 }
 
-uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity)
-{
+uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity) {
   return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)true);
 }
 
-uint8_t TwoWire::requestFrom(int address, int quantity)
-{
+uint8_t TwoWire::requestFrom(int address, int quantity) {
   return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)true);
 }
 
-uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop)
-{
+uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop) {
   return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)sendStop);
 }
 
-void TwoWire::beginTransmission(uint8_t address)
-{
+void TwoWire::beginTransmission(uint8_t address) {
   // indicate that we are transmitting
   transmitting = 1;
   // set address of targeted slave
@@ -172,8 +182,7 @@ void TwoWire::beginTransmission(uint8_t address)
   txBufferLength = 0;
 }
 
-void TwoWire::beginTransmission(int address)
-{
+void TwoWire::beginTransmission(int address) {
   beginTransmission((uint8_t)address);
 }
 
@@ -190,38 +199,41 @@ void TwoWire::beginTransmission(int address)
 //	no call to endTransmission(true) is made. Some I2C
 //	devices will behave oddly if they do not see a STOP.
 //
-uint8_t TwoWire::endTransmission(uint8_t sendStop)
-{
-#if defined(VM_DISABLE_TWI)
+uint8_t TwoWire::endTransmission(uint8_t sendStop) {
+  uint8_t ret = 0;
+#if defined(VB_FIRMATA_PORT)
+  ret = _i2c->request(txAddress, sendStop ? CFI_I2C_STOP_TX : CFI_I2C_RESTART_TX,
+      CFI_I2C_WRITE, txBuffer, txBufferLength, rxBuffer, 0);
+#elif defined(VM_DISABLE_TWI)
   return 4; // other error
 #else
   // transmit buffer (blocking)
   uint8_t ret = twiWrapper.writeTo(txAddress, txBuffer, txBufferLength, 1, sendStop);
+#endif
   // reset tx buffer iterator vars
   txBufferIndex = 0;
   txBufferLength = 0;
   // indicate that we are done transmitting
   transmitting = 0;
   return ret;
-#endif
 }
 
 //	This provides backwards compatibility with the original
 //	definition, and expected behaviour, of endTransmission
 //
-uint8_t TwoWire::endTransmission(void)
-{
+uint8_t TwoWire::endTransmission(void) {
   return endTransmission(true);
 }
 
 // must be called in:
 // slave tx event callback
 // or after beginTransmission(address)
-size_t TwoWire::write(uint8_t data)
-{
-#if defined(VM_DISABLE_TWI)
+size_t TwoWire::write(uint8_t data) {
+#if defined(VB_FIRMATA_PORT)
+  // do nothing here
+#elif defined(VM_DISABLE_TWI)
   return 0; // zero bytes written
-#else
+#endif
   if (transmitting) {
     // in master transmitter mode
     // don't bother if buffer is full
@@ -234,50 +246,53 @@ size_t TwoWire::write(uint8_t data)
     ++txBufferIndex;
     // update amount in buffer
     txBufferLength = txBufferIndex;
-  } else {
+  }
+  else {
     // in slave send mode
     // reply to master
+#if defined(VM_USE_VIRTUAL_TWI)
     twiWrapper.transmit(&data, 1);
+#endif
   }
   return 1;
-#endif
 }
 
 // must be called in:
 // slave tx event callback
 // or after beginTransmission(address)
-size_t TwoWire::write(const uint8_t *data, size_t quantity)
-{
-#if defined(VM_DISABLE_TWI)
+size_t TwoWire::write(const uint8_t* data, size_t quantity) {
+#if defined(VB_FIRMATA_PORT)
+  // do nothing here
+#elif defined(VM_DISABLE_TWI)
   return 0; // zero bytes written
-#else
+#endif
   if (transmitting) {
     // in master transmitter mode
     for (size_t i = 0; i < quantity; ++i) {
       write(data[i]);
     }
-  } else {
+  }
+  else {
     // in slave send mode
     // reply to master
+#if defined(VM_USE_VIRTUAL_TWI)
     twiWrapper.transmit(data, quantity);
+#endif
   }
   return quantity;
-#endif
 }
 
 // must be called in:
 // slave rx event callback
 // or after requestFrom(address, numBytes)
-int TwoWire::available(void)
-{
+int TwoWire::available(void) {
   return rxBufferLength - rxBufferIndex;
 }
 
 // must be called in:
 // slave rx event callback
 // or after requestFrom(address, numBytes)
-int TwoWire::read(void)
-{
+int TwoWire::read(void) {
   int value = -1;
 
   // get each successive byte on each call
@@ -292,8 +307,7 @@ int TwoWire::read(void)
 // must be called in:
 // slave rx event callback
 // or after requestFrom(address, numBytes)
-int TwoWire::peek(void)
-{
+int TwoWire::peek(void) {
   int value = -1;
 
   if (rxBufferIndex < rxBufferLength) {
@@ -303,14 +317,12 @@ int TwoWire::peek(void)
   return value;
 }
 
-void TwoWire::flush(void)
-{
+void TwoWire::flush(void) {
   // XXX: to be implemented.
 }
 
 // behind the scenes function that is called when data is received
-void TwoWire::onReceiveService(uint8_t* inBytes, int numBytes)
-{
+void TwoWire::onReceiveService(uint8_t* inBytes, int numBytes) {
   // don't bother if user hasn't registered a callback
   if (!user_onReceive) {
     return;
@@ -334,8 +346,7 @@ void TwoWire::onReceiveService(uint8_t* inBytes, int numBytes)
 }
 
 // behind the scenes function that is called when data is requested
-void TwoWire::onRequestService(void)
-{
+void TwoWire::onRequestService(void) {
   // don't bother if user hasn't registered a callback
   if (!user_onRequest) {
     return;
@@ -349,14 +360,12 @@ void TwoWire::onRequestService(void)
 }
 
 // sets function called on slave write
-void TwoWire::onReceive(void(*function)(int))
-{
+void TwoWire::onReceive(void(*function)(int)) {
   user_onReceive = function;
 }
 
 // sets function called on slave read
-void TwoWire::onRequest(void(*function)(void))
-{
+void TwoWire::onRequest(void(*function)(void)) {
   user_onRequest = function;
 }
 

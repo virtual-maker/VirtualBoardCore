@@ -22,5 +22,6 @@
 #include "CFI_AnalogInputFeature.cpp"
 #include "CFI_AnalogOutputFeature.cpp"
 #include "CFI_SPIFeature.cpp"
+#include "CFI_I2CFeature.cpp"
 
 #endif
